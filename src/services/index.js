@@ -17,16 +17,20 @@ import { ProxyService } from './proxy-service.js';
 import { Scheduler } from './scheduler.js';
 import { cleanup } from './maintenance-service.js';
 export async function createServices(config, send) {
-  const logger = createLogger(config); const store = await new JsonStore(config.DATABASE_PATH).init();
+  const logger = createLogger(config); let store;
+  try { store = await new JsonStore(config.DATABASE_PATH).init(); } catch (error) { error.startupStage = 'DATABASE'; throw error; }
+  let stage = 'DATABASE';
   try {
     const isNew = !store.snapshot().meta.updatedAt;
     if (isNew) await store.transaction(db => { db.settings.referralsEnabled = config.REFERRAL_ENABLED; db.settings.xpEnabled = config.XP_ENABLED; db.settings.scanIntervalMinutes = config.PROMO_CHECK_INTERVAL_MINUTES; });
+    stage = 'PROVIDERS';
     const providers = await createProviders(config.PROVIDER_CONFIG_PATH);
     const users = new UserService(store); const promo = new PromoService(store, providers, logger, config.MAX_CONCURRENT_CHECKS);
     const cloud = new CloudService(promo); const alerts = new AlertService(store); const notifications = new NotificationService(store, send);
     const backup = new BackupService(store, config.BACKUP_PATH, config.OWNER_ID); const referral = new ReferralService(store);
     const tickets = new TicketService(store, config.OWNER_ID); const exports = new ExportService(store);
     const ai = new AiService(promo, config.AI_PROVIDER === 'openai' ? new OpenAiAdapter(config) : null);
+    stage = 'PROXY';
     const proxy = await ProxyService.create(store, config.OWNER_ID, config.PROXY_CONFIG_PATH);
     const scheduler = new Scheduler(store, {
       scan: (_task, signal) => promo.scan(signal),
@@ -46,9 +50,10 @@ export async function createServices(config, send) {
         return `Terkirim pada percobaan ini: ${sent}; tidak dapat dihubungi: ${failed}.`;
       },
     }, { concurrency: config.MAX_CONCURRENT_CHECKS, retries: config.MAX_RETRIES, timeout: 120000, logger });
+    stage = 'SCHEDULER';
     await scheduler.recover();
     return { store, logger, providers, users, promo, cloud, alerts, notifications, backup, referral, tickets, exports, ai, proxy, scheduler };
-  } catch (error) { await store.close(); throw error; }
+  } catch (error) { error.startupStage = stage; await store.close(); throw error; }
 }
 export function startPeriodic(services, config) {
   let busy = false; let pending = Promise.resolve();

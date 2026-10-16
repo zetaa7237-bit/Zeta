@@ -15,7 +15,7 @@ export class JsonStore {
   async init() {
     await fs.mkdir(path.dirname(this.filename), { recursive: true, mode: 0o700 });
     try { this.#lock = await fs.open(`${this.filename}.lock`, 'wx', 0o600); }
-    catch (error) { if (error.code === 'EEXIST') throw new Error('Database terkunci. Pastikan proses lain sudah berhenti sebelum menghapus .lock.'); throw error; }
+    catch (error) { if (error.code === 'EEXIST') throw Object.assign(new Error('Database terkunci. Pastikan proses lain sudah berhenti sebelum menghapus .lock.'), { code: 'DATABASE_LOCKED' }); throw error; }
     await this.#lock.writeFile(String(process.pid));
     try {
       let raw;

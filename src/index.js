@@ -2,6 +2,7 @@ import { pathToFileURL } from 'node:url';
 import { loadConfig } from './config.js';
 import { createBot } from './bot.js';
 import { createServices, startPeriodic } from './services/index.js';
+import { startupErrorMessage } from './utils/startup-error.js';
 import { publicAgent } from './utils/http.js';
 export async function main() {
   const config = loadConfig(); let bot;
@@ -16,16 +17,19 @@ export async function main() {
   };
   process.once('SIGINT', () => { shutdown('SIGINT').catch(() => { process.exitCode = 1; }); });
   process.once('SIGTERM', () => { shutdown('SIGTERM').catch(() => { process.exitCode = 1; }); });
+  let stage = 'TELEGRAM_AUTH';
   try {
     bot.botInfo = await bot.telegram.getMe();
+    stage = 'TELEGRAM_COMMANDS';
     await bot.telegram.setMyCommands([{ command: 'start', description: 'Menu NOVA HUNTER' }, { command: 'search', description: 'Cari penawaran lokal' }, { command: 'cancel', description: 'Batalkan input' }, { command: 'privacy', description: 'Kebijakan penyimpanan data' }]);
     services.scheduler.start(); stopPeriodic = startPeriodic(services, config); launched = true;
     services.logger.info('NOVA HUNTER V3 siap; long polling satu proses.');
+    stage = 'POLLING';
     await bot.launch({ dropPendingUpdates: false });
-  } finally { await shutdown('STOP'); }
+  } catch (error) { error.startupStage = stage; throw error; } finally { await shutdown('STOP'); }
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch(error => {
   // Hanya error konfigurasi buatan sendiri boleh ditampilkan; error transport dapat membawa URL token.
-  const message = error.message?.startsWith('Konfigurasi tidak valid:') ? error.message : 'Startup gagal. Periksa konektivitas Telegram, konfigurasi, izin disk, schema, dan lock database.';
+  const message = startupErrorMessage(error);
   process.stderr.write(`${message}\n`); process.exitCode = 1;
 });
