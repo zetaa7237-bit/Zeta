@@ -20,8 +20,9 @@ import { cleanup } from './maintenance-service.js';
 export async function createServices(config, send) {
   const logger = createLogger(config); let store;
   try {
-    if (await recoverDatabaseLock(config.DATABASE_PATH, config.DATABASE_LOCK_RECOVERY_ID, { persistent: config.PERSISTENT_STORAGE })) logger.warn('Lock tertinggal dipulihkan melalui operasi operator sekali pakai.');
-    store = await new JsonStore(config.DATABASE_PATH).init(); } catch (error) { error.startupStage = 'DATABASE'; throw error; }
+    if (await recoverDatabaseLock(config.DATABASE_PATH, config.DATABASE_LOCK_RECOVERY_ID, { persistent: config.PERSISTENT_STORAGE })) logger.warn('Lock instance lama dipulihkan pada disk Render eksklusif.');
+    const lockIdentity = config.PERSISTENT_STORAGE && /^srv-[a-z0-9]+$/.test(process.env.RENDER_SERVICE_ID ?? '') && process.env.RENDER_INSTANCE_ID ? { serviceId: process.env.RENDER_SERVICE_ID, instanceId: process.env.RENDER_INSTANCE_ID } : undefined;
+    store = await new JsonStore(config.DATABASE_PATH, { lockIdentity }).init(); } catch (error) { error.startupStage = 'DATABASE'; throw error; }
   let stage = 'DATABASE';
   try {
     const isNew = !store.snapshot().meta.updatedAt;

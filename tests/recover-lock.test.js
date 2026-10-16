@@ -33,3 +33,24 @@ it('does nothing unless operator supplies a recovery ID', async () => {
   const { filename } = await fixture(); await fs.writeFile(`${filename}.lock`, '2147483647');
   expect(await recoverDatabaseLock(filename, '')).toBe(false); expect(await fs.readFile(`${filename}.lock`, 'utf8')).toBe('2147483647');
 });
+it('recovers an identified previous Render instance automatically despite PID namespace reuse', async () => {
+  const { filename, options } = await fixture();
+  const store = await new JsonStore(filename, { lockIdentity: { serviceId: options.serviceId, instanceId: 'previous-instance' } }).init();
+  const raw = await fs.readFile(`${filename}.lock`, 'utf8'); await store.close();
+  await fs.writeFile(`${filename}.lock`, raw.replace(String(process.pid), String(process.ppid)));
+  expect(await recoverDatabaseLock(filename, '', options)).toBe(true);
+  const reopened = await new JsonStore(filename, { lockIdentity: { serviceId: options.serviceId, instanceId: options.instanceId } }).init();
+  expect(JSON.parse(await fs.readFile(`${filename}.lock`, 'utf8')).instanceId).toBe(options.instanceId); await reopened.close();
+});
+it('refuses automatic recovery for another service, legacy lock, or live process in the same instance', async () => {
+  const { filename, options } = await fixture();
+  const lock = { version: 1, pid: process.ppid, serviceId: options.serviceId, instanceId: options.instanceId };
+  await fs.writeFile(`${filename}.lock`, JSON.stringify(lock));
+  await expect(recoverDatabaseLock(filename, '', options)).rejects.toMatchObject({ code: 'DATABASE_LOCKED' });
+  await fs.writeFile(`${filename}.lock`, JSON.stringify({ ...lock, serviceId: 'srv-other' }));
+  expect(await recoverDatabaseLock(filename, '', options)).toBe(false);
+  await fs.writeFile(`${filename}.lock`, '2147483647');
+  expect(await recoverDatabaseLock(filename, '', options)).toBe(false);
+  await fs.writeFile(`${filename}.lock`, JSON.stringify({ ...lock, instanceId: 'old' }));
+  await expect(recoverDatabaseLock(filename, '', { ...options, mountInfo: async () => '' })).rejects.toMatchObject({ code: 'RECOVERY_NOT_ALLOWED' });
+});

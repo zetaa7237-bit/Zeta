@@ -59,3 +59,7 @@ Jika startup menampilkan `DATABASE; DATABASE_LOCKED`, operator dapat memakai `DA
 Pemulihan menolak lock yang PID-nya masih aktif pada proses lain, format tak dikenal, symlink, atau path di luar mount. PID yang sama dengan proses startup adalah lock lama karena proses tersebut belum membuka database. Lock dipindahkan ke `.lock.recovered-<id>`; database tidak diubah. Marker `.recovery-<id>.done` memastikan satu ID hanya digunakan sekali. Operasi tidak memakai umur file sebagai bukti lock aman dihapus. Hapus nilai environment setelah pemulihan berhasil. Jangan gunakan mekanisme ini pada filesystem bersama lintas proses atau beberapa replica.
 
 [Aturan disk Render](https://render.com/docs/disks) menyatakan disk hanya tersedia untuk satu instance dan menonaktifkan zero-downtime deploy. Jika verifikasi gagal, gunakan prosedur recovery manual; jangan menghapus lock yang belum dipastikan tertinggal.
+
+### Restart dengan identitas instance
+
+Lock baru pada worker Render persisten memuat PID, service ID, dan instance ID (tanpa rahasia). Ketika instance berubah, lock dapat dipulihkan otomatis **hanya** pada mount disk eksklusif yang terverifikasi dan service yang sama. PID antar-instance tidak dibandingkan karena namespace proses berbeda. Pada instance yang sama, PID proses lain yang masih hidup tetap ditolak. Lock legacy berupa PID tetap membutuhkan recovery operator sekali pakai. Di luar Render, perilaku lock tetap menolak penulis kedua. Ini menjaga restart setelah penghentian paksa tanpa menghapus atau mengosongkan database.
