@@ -1,0 +1,84 @@
+{
+  "meta": {
+    "version": 1,
+    "createdAt": null,
+    "updatedAt": null
+  },
+  "users": [],
+  "offers": [],
+  "categories": [
+    "cloud",
+    "developer",
+    "ai",
+    "hosting",
+    "productivity",
+    "education",
+    "entertainment",
+    "trial",
+    "startup",
+    "free"
+  ],
+  "searchHistory": [],
+  "favorites": [],
+  "notifications": [],
+  "tasks": [],
+  "tickets": [],
+  "referrals": [],
+  "achievements": [
+    {
+      "id": "first-search",
+      "name": "First Search",
+      "activity": "search",
+      "threshold": 1
+    },
+    {
+      "id": "explorer",
+      "name": "Promo Explorer",
+      "activity": "search",
+      "threshold": 10
+    },
+    {
+      "id": "cloud-learner",
+      "name": "Cloud Learner",
+      "activity": "cloud",
+      "threshold": 1
+    },
+    {
+      "id": "watchlist",
+      "name": "Watchlist Creator",
+      "activity": "favorite",
+      "threshold": 1
+    },
+    {
+      "id": "reporter",
+      "name": "Helpful Reporter",
+      "activity": "ticket",
+      "threshold": 1
+    },
+    {
+      "id": "seven-day",
+      "name": "Seven-Day Active",
+      "activity": "active",
+      "threshold": 7
+    },
+    {
+      "id": "researcher",
+      "name": "Promo Researcher",
+      "activity": "compare",
+      "threshold": 5
+    }
+  ],
+  "userAchievements": [],
+  "settings": {
+    "maintenance": false,
+    "referralsEnabled": true,
+    "xpEnabled": true,
+    "scanIntervalMinutes": 60,
+    "disabledProviders": [],
+    "disabledProxies": [],
+    "lastScanAt": null,
+    "lastBackupAt": null
+  },
+  "auditLogs": [],
+  "backups": []
+}

@@ -1,0 +1,29 @@
+services:
+  - type: worker
+    name: nova-hunter-v3
+    runtime: node
+    plan: starter
+    numInstances: 1
+    buildCommand: npm ci && npm run check && npm test
+    startCommand: npm start
+    disk:
+      name: nova-data
+      mountPath: /var/data/nova
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 24.14.1
+      - key: NODE_ENV
+        value: production
+      - key: BOT_TOKEN
+        sync: false
+      - key: OWNER_ID
+        sync: false
+      - key: DATABASE_PATH
+        value: /var/data/nova/database.json
+      - key: BACKUP_PATH
+        value: /var/data/nova/backups
+      - key: PERSISTENT_STORAGE
+        value: "true"
+      - key: AI_PROVIDER
+        value: none

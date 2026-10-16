@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+!.env.example
+coverage/
+*.log
+data/*
+!data/database.json
+!data/backups/
+data/backups/*
+!data/backups/.gitkeep
+provider-config.json
+proxy-config.json

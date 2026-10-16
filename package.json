@@ -1,0 +1,17 @@
+{
+  "name": "nova-hunter-v3",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Bot Telegram riset penawaran resmi dengan penyimpanan JSON",
+  "engines": { "node": ">=24 <25" },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "node scripts/check-source.js",
+    "validate:database": "node --env-file-if-exists=.env scripts/validate-database.js"
+  },
+  "dependencies": { "telegraf": "4.16.3", "zod": "^4.0.0", "pino": "^10.0.0", "undici": "^7.0.0", "ipaddr.js": "^2.2.0" },
+  "devDependencies": { "vitest": "^4.0.0" }
+}
