@@ -45,6 +45,7 @@ export class PromoService {
     const disabled = this.store.snapshot().settings.disabledProviders;
     const providers = this.providers.filter(provider => provider.isConfigured() && !disabled.includes(provider.getName()));
     if (!providers.length) return 'NOT CONFIGURED: aktifkan feed resmi melalui PROVIDER_CONFIG_PATH.';
+    await this.store.transaction(db => { db.settings.lastScanAt = now(); });
     const reports = []; const retryDelays = []; let cursor = 0;
     await Promise.all(Array.from({ length: Math.min(this.concurrency, providers.length) }, async () => {
       while (cursor < providers.length && !signal?.aborted) {
@@ -67,13 +68,19 @@ export class PromoService {
               }
             }
           });
-          reports.push(`${provider.getName()}: ${offers.length}`);
-        } catch (error) { retryDelays.push(error.retryAfterMs ?? 0); this.logger.warn({ err: error, provider: provider.getName() }, 'Pemeriksaan provider gagal'); reports.push(`${provider.getName()}: ERROR`); }
+          reports.push(`${provider.getName()}: ${offers.length} (${provider.health ?? 'OK'})`);
+        } catch (error) {
+          // Kegagalan koneksi membatalkan kepastian snapshot lama, tanpa membuat promo palsu.
+          // Cooldown sendiri tidak berarti sumber gagal.
+          if (provider.health === 'ERROR' || provider.health === 'BLOCKED') await this.store.transaction(db => {
+            for (const offer of db.offers.filter(item => item.provider === provider.getName() && item.status === 'VERIFIED')) { offer.status = 'UNVERIFIED'; offer.benefitValue = null; offer.currency = null; }
+          });
+          retryDelays.push(error.retryAfterMs ?? 0); this.logger.warn({ err: error, provider: provider.getName() }, 'Pemeriksaan provider gagal'); reports.push(`${provider.getName()}: ERROR`); }
       }
     }));
     if (signal?.aborted) throw new Error('Job dihentikan.');
     if (reports.every(item => item.endsWith('ERROR'))) throw Object.assign(new Error('Seluruh provider gagal.'), { retryAfterMs: Math.min(...retryDelays) });
-    await this.store.transaction(db => { db.settings.lastScanAt = now(); });
+    this.logger.info({ sources: reports }, 'Pemeriksaan sumber promo selesai');
     return `Sumber diperiksa: ${reports.join('; ')}`;
   }
 }

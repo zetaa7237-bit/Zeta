@@ -2,9 +2,32 @@
 
 ## Prinsip sumber
 
-Tidak ada API universal untuk seluruh promo internet. Adapter bawaan AWS/cloud/software/entertainment menggunakan **feed JSON yang operator telah verifikasi izin aksesnya**, bukan scraper HTML tanpa izin. Sebelum konfigurasi, periksa ketentuan layanan, aturan robots yang relevan, rate limit, dan apakah setiap URL benar-benar resmi.
+Tidak ada API universal untuk seluruh promo internet. Secara default, empat adapter membaca halaman publik resmi pada URL tetap di bawah. Tidak dibutuhkan kredensial pengguna, file feed, atau API key. Bot menghormati robots policy, tidak mengikuti redirect, serta menolak alamat privat dan halaman yang tidak dapat diverifikasi. Jangan menganggap robots sebagai izin mengabaikan ketentuan penyedia; nonaktifkan sumber melalui `/providers` jika kebijakan akses berubah.
 
-Status `VERIFIED` berarti record yang disuplai feed menyatakan data sudah diverifikasi pada timestamp tersebut; bot memvalidasi kontrak, sumber allowlist, dan umur data. Bot tidak dapat membuktikan klaim pemasaran secara independen. Operator harus bertanggung jawab atas provenance feed. `health=OK` hanya berarti respons dan schema sumber lolos pemeriksaan.
+| Adapter | Sumber resmi | Informasi yang diperiksa |
+|---|---|---|
+| aws | https://aws.amazon.com/free/ | Keberadaan program kredit untuk pelanggan baru; maksimum USD/durasi hanya jika pola eksplisit cocok |
+| cloud | https://cloud.google.com/free | Program kredit pelanggan baru; simbol $ tanpa konteks mata uang tidak dikonversi otomatis menjadi USD |
+| software | https://github.com/features/copilot/plans | Keberadaan paket Copilot Free dan batas kelayakan yang dapat dibaca |
+| entertainment | https://help.netflix.com/id/node/16282 | Pernyataan Netflix tidak menyediakan trial; record berstatus UNAVAILABLE |
+
+Daftar ini dibatasi empat halaman, bukan pemindaian seluruh internet. Halaman dapat berubah menurut wilayah/waktu. Tidak ada klaim premium otomatis atau pendaftaran akun otomatis.
+
+### Jadwal dan status sumber bawaan
+
+- `BUILTIN_PROVIDERS_ENABLED=true` secara default; set false untuk memakai feed khusus saja. File `PROVIDER_CONFIG_PATH` opsional mengganti sumber dengan ID yang sama, sementara kategori lain tetap memakai sumber bawaan.
+- Pemicu otomatis mengikuti `/interval` (default 60 menit), dengan cooldown sumber bawaan minimal 60 menit. Pertama kali sumber baru dipasang, scan dimulai tanpa menunggu jadwal lama.
+- Sebelum mengambil halaman, robots.txt harus berhasil dibaca dan mengizinkan NovaHunter. Cache robots maksimum 24 jam di memori; Crawl-delay sampai 10 detik ditunggu, nilai lebih besar menunda sumber agar tidak melampaui batas job.
+- User-Agent mengidentifikasi NovaHunter dan repository. Tidak ada login, cookie, JavaScript halaman, proxy, bypass CAPTCHA, atau URL dari pengguna yang diambil. Batas robots 128 KB, HTML 3 MB; timeout request 15 detik.
+- `OK`: halaman dan pola bukti cocok; `CONTENT_CHANGED`: HTTP berhasil tetapi pola tidak cocok, record menjadi UNKNOWN; `BLOCKED`: robots melarang; `ERROR`: jaringan/HTTP/format gagal. NOT CHECKED berarti belum ada pemeriksaan pada proses ini.
+- Untuk halaman bawaan, VERIFIED hanya menyatakan bukti program ditemukan pada timestamp tersebut. Angka yang tidak dapat dipastikan, batas, wilayah, dan tanggal akhir tetap UNKNOWN. Nilai maksimum diberi label bersyarat. Isi situs diperlakukan sebagai data, bukan instruksi.
+- Jika halaman berubah, benefit dikosongkan. Jika koneksi/robots gagal, record VERIFIED lama dari sumber tersebut diturunkan ke UNVERIFIED, angka/mata uang dihapus. Sumber lain tetap diproses.
+- Pengguna dapat memakai Search, Semua kategori, Favorites, dan alert pada hasil yang tersimpan. Tanggal berakhir UNKNOWN tidak menghasilkan pengingat kedaluwarsa buatan.
+- Jalankan `npm run check:providers` untuk smoke live yang tidak membutuhkan BOT_TOKEN dan tidak mengubah database produksi.
+
+## Feed khusus (opsional)
+
+Khusus feed JSON, status `VERIFIED` berarti record yang disuplai feed menyatakan data sudah diverifikasi pada timestamp tersebut; bot memvalidasi kontrak, sumber allowlist, dan umur data. Bot tidak dapat membuktikan klaim pemasaran secara independen. Operator harus bertanggung jawab atas provenance feed. `health=OK` hanya berarti respons dan schema sumber lolos pemeriksaan.
 
 ## Konfigurasi feed
 
@@ -22,7 +45,7 @@ Buat file privat di disk, misalnya `/var/data/nova/providers.json`, lalu set `PR
 ]
 ```
 
-**URL contoh di atas bukan layanan yang tersedia.** Ganti dengan feed nyata yang Anda berhak akses. Jangan mengaktifkan konfigurasi contoh seolah-olah berhasil. Tidak ada endpoint promo AWS yang dihardcode atau diklaim tersedia.
+**URL contoh di atas bukan layanan yang tersedia.** Ganti dengan feed nyata yang Anda berhak akses. Jangan mengaktifkan konfigurasi contoh seolah-olah berhasil. Tidak ada API feed promo AWS universal yang diasumsikan tersedia; sumber bawaan AWS memakai halaman publik di tabel, bukan endpoint contoh ini.
 
 - ID tersedia: `aws`, `cloud`, `software`, `entertainment`, maksimal satu konfigurasi per ID.
 - Endpoint, URL resmi, sumber, dan URL pendaftaran harus memakai HTTPS tanpa kredensial/fragmen/port khusus. Parameter query yang menyerupai credential ditolak.
@@ -30,7 +53,7 @@ Buat file privat di disk, misalnya `/var/data/nova/providers.json`, lalu set `PR
 - DNS koneksi feed dipastikan menuju alamat publik; IP literal, loopback, private, link-local, reserved, dan redirect ditolak. Resolusi yang divalidasi dipakai langsung oleh konektor, bukan resolve terpisah sebelum fetch.
 - Respons maksimum 1 MB, maksimum 500 record per feed, timeout 15 detik. Tidak ada cookie atau kredensial pengguna yang diteruskan.
 - `minIntervalSeconds` default 300, minimal 60, maksimal 86400. Sesuaikan ke rate limit penyedia. Header Retry-After yang valid juga dihormati hingga maksimal 24 jam. Cooldown dicatat di memori untuk satu proses; restart meresetnya. Hindari restart berulang untuk mengulang fetch.
-- Feed harus berisi array JSON. Tidak ada interpretasi HTML, script, atau instruksi dalam isi record. Bot tidak menggunakan teks provider sebagai instruksi AI.
+- Feed khusus harus berisi array JSON. Tidak ada interpretasi HTML, script, atau instruksi dalam isi record. Bot tidak menggunakan teks provider sebagai instruksi AI.
 - Provider diaktifkan/dinonaktifkan melalui `/providers` setelah file dikonfigurasi. Perubahan endpoint/allowlist di file memerlukan restart worker.
 
 ### Kontrak record feed

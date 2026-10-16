@@ -28,7 +28,7 @@ export async function createServices(config, send) {
     const isNew = !store.snapshot().meta.updatedAt;
     if (isNew) await store.transaction(db => { db.settings.referralsEnabled = config.REFERRAL_ENABLED; db.settings.xpEnabled = config.XP_ENABLED; db.settings.scanIntervalMinutes = config.PROMO_CHECK_INTERVAL_MINUTES; });
     stage = 'PROVIDERS';
-    const providers = await createProviders(config.PROVIDER_CONFIG_PATH);
+    const providers = await createProviders(config.PROVIDER_CONFIG_PATH, { builtinEnabled: config.BUILTIN_PROVIDERS_ENABLED });
     const users = new UserService(store); const promo = new PromoService(store, providers, logger, config.MAX_CONCURRENT_CHECKS);
     const cloud = new CloudService(promo); const alerts = new AlertService(store); const notifications = new NotificationService(store, send);
     const backup = new BackupService(store, config.BACKUP_PATH, config.OWNER_ID); const referral = new ReferralService(store);
@@ -60,12 +60,15 @@ export async function createServices(config, send) {
   } catch (error) { error.startupStage = stage; await store.close(); throw error; }
 }
 export function startPeriodic(services, config) {
-  let busy = false; let pending = Promise.resolve();
+  let busy = false; let pending = Promise.resolve(); let firstTick = true;
   const tick = async () => {
     if (busy || !services.scheduler.health().running) return; busy = true;
     try {
-      const db = services.store.snapshot();
-      if (!db.settings.maintenance && services.providers.some(provider => provider.isConfigured() && !db.settings.disabledProviders.includes(provider.getName())) && (!db.settings.lastScanAt || Date.now() - Date.parse(db.settings.lastScanAt) >= db.settings.scanIntervalMinutes * 60000)) await services.scheduler.enqueue('scan', config.OWNER_ID, 'scan');
+      const db = services.store.snapshot(); const initial = firstTick; firstTick = false;
+      const activeProviders = services.providers.filter(provider => provider.isConfigured() && !db.settings.disabledProviders.includes(provider.getName()));
+      const newSources = initial && activeProviders.some(provider => !db.offers.some(offer => offer.provider === provider.getName()));
+      const scanDue = !db.settings.lastScanAt || newSources || Date.now() - Date.parse(db.settings.lastScanAt) >= db.settings.scanIntervalMinutes * 60000;
+      if (!db.settings.maintenance && activeProviders.length && scanDue) await services.scheduler.enqueue('scan', config.OWNER_ID, 'scan');
       if (config.BACKUP_ENABLED && (!db.settings.lastBackupAt || Date.now() - Date.parse(db.settings.lastBackupAt) >= config.BACKUP_INTERVAL_HOURS * 3600000)) await services.scheduler.enqueue('backup', config.OWNER_ID, 'backup');
       if (!db.settings.maintenance) await services.scheduler.enqueue('alerts', config.OWNER_ID, 'alerts');
     } catch (error) { services.logger.warn({ err: error }, 'Antrean berkala gagal'); } finally { busy = false; }

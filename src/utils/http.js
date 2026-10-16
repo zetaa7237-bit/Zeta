@@ -25,7 +25,7 @@ export async function readLimited(response, limit = 1024 * 1024) {
   }
   return Buffer.concat(chunks).toString('utf8');
 }
-export async function fetchJson(url, { allowedHosts, signal, timeout = 15000, dispatcher = publicAgent, ...options } = {}) {
+export async function fetchText(url, { allowedHosts, signal, timeout = 15000, maxBytes = 1024 * 1024, dispatcher = publicAgent, ...options } = {}) {
   const parsed = new URL(safeUrl.parse(url));
   if (!allowedHosts?.includes(parsed.hostname) || ipaddr.isValid(parsed.hostname.replace(/^\[|\]$/g, ''))) throw new Error('Host tidak diizinkan.');
   const response = await fetch(url, { ...options, dispatcher, redirect: 'error', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(timeout)]) : AbortSignal.timeout(timeout) });
@@ -37,5 +37,9 @@ export async function fetchJson(url, { allowedHosts, signal, timeout = 15000, di
     error.retryAfterMs = Number.isFinite(delay) ? Math.min(86400000, Math.max(0, delay)) : 0;
     throw error;
   }
-  return JSON.parse(await readLimited(response));
+  return readLimited(response, maxBytes);
+}
+
+export async function fetchJson(url, options = {}) {
+  return JSON.parse(await fetchText(url, options));
 }

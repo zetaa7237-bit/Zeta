@@ -16,6 +16,7 @@ const schema = z.object({
   AI_API_KEY: z.string().default(''), AI_MODEL: z.string().max(100).default(''),
   BACKUP_ENABLED: flag.prefault('true'), BACKUP_INTERVAL_HOURS: integer(1, 168, 12),
   REFERRAL_ENABLED: flag.prefault('true'), XP_ENABLED: flag.prefault('true'),
+  BUILTIN_PROVIDERS_ENABLED: flag.prefault('true'),
   PROVIDER_CONFIG_PATH: z.string().default(''), PROXY_CONFIG_PATH: z.string().default(''),
   PERSISTENT_STORAGE: flag.prefault('false'), REQUEST_TIMEOUT_MS: integer(1000, 60000, 15000),
 }).superRefine((value, ctx) => {

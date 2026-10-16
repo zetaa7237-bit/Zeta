@@ -24,11 +24,11 @@ Gunakan **satu Background Worker** dengan long polling. Tidak diperlukan port at
    - `BACKUP_PATH=/var/data/nova/backups`.
    - `PERSISTENT_STORAGE=true` hanya setelah mount dikonfirmasi.
 7. Bila tanpa disk, gunakan path lokal yang dapat ditulis dan `PERSISTENT_STORAGE=false`. Ini hanya cocok untuk demo yang boleh kehilangan data. Ekspor owner sebelum setiap pergantian instance tidak menjamin seluruh perubahan terakhir tersimpan.
-8. Jangan simpan database pada direktori source/build yang dapat ditimpa deployment. Konfigurasi provider/proxy yang dapat diedit juga sebaiknya di disk persisten; `PROVIDER_CONFIG_PATH`/`PROXY_CONFIG_PATH` menunjuk berkas tersebut.
+8. Jangan simpan database pada direktori source/build yang dapat ditimpa deployment. Sumber promo bawaan aktif otomatis tanpa file konfigurasi. Jika memakai feed/proxy khusus, konfigurasi yang dapat diedit sebaiknya di disk persisten; `PROVIDER_CONFIG_PATH`/`PROXY_CONFIG_PATH` menunjuk berkas tersebut.
 9. Jalankan deployment. Periksa log: tidak boleh ada token penuh; harus ada pesan kesiapan long polling atau error konfigurasi yang menyebut nama field.
 10. Jalankan `/start` sebagai owner dan pengguna lain. Pengguna lain tidak memiliki menu admin; command `/admin` langsung juga harus ditolak.
-11. Jalankan checklist di `ACCEPTANCE.md`: menu, query kosong, tiket, favorit (setelah feed tersedia), backup, restore, dan job.
-12. Jalankan `/health`, `/providers`, `/jobs`. `NOT CONFIGURED` adalah hasil yang benar sebelum sumber dipasang, bukan startup gagal.
+11. Jalankan checklist di `ACCEPTANCE.md`: menu, query kosong, tiket, favorit (setelah scan pertama selesai), backup, restore, dan job.
+12. Jalankan `/health`, `/providers`, `/jobs`. Sumber bawaan mula-mula NOT CHECKED lalu OK setelah scan. NOT CONFIGURED muncul bila sumber bawaan dinonaktifkan dan tidak ada feed pengganti. Periksa log `Pemeriksaan sumber promo selesai` dan My Tasks untuk hasil scan.
 13. Verifikasi retensi setelah restart: buat preferensi/tiket sintetis, restart worker, pastikan data tetap ada. Hapus data tes setelah pemeriksaan. Tidak perlu mengirim atau mencetak token untuk menguji ini.
 
 ## Mengapa bukan Web Service?

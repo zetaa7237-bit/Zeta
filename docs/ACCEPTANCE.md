@@ -22,20 +22,27 @@ Pilih fitur:
 
 Telegram standar menentukan warna/tema tombol. Bot tidak mengklaim dapat memaksakan warna ungu/biru atau dark mode; gunakan tema gelap pada klien Telegram untuk tampilan gelap. Ikon, pemisah, judul pendek, dan layout dipakai untuk konsistensi.
 
-## Sebelum provider diaktifkan
+## Setelah pemeriksaan sumber bawaan berhasil
 
 ```text
 Promo Radar
 Sumber terdaftar:
-aws: NOT CONFIGURED
-cloud: NOT CONFIGURED
-software: NOT CONFIGURED
-entertainment: NOT CONFIGURED
+aws: OK
+https://aws.amazon.com/free/ · [waktu pemeriksaan]
+cloud: OK
+https://cloud.google.com/free · [waktu pemeriksaan]
+software: OK
+https://github.com/features/copilot/plans · [waktu pemeriksaan]
+entertainment: OK
+https://help.netflix.com/id/node/16282 · [waktu pemeriksaan]
 
-NOT CONFIGURED: owner mengatur PROVIDER_CONFIG_PATH.
-Pencarian lokal tidak memindai internet.
+Pemeriksaan otomatis setiap 60 menit.
 [Search] [Refresh sumber]
+[Semua kategori]
+[Refresh status]
 ```
+
+Contoh ini menunjukkan hasil pemeriksaan sukses, bukan jaminan semua sumber selalu tersedia. Sebelum pemeriksaan pertama: NOT CHECKED. Netflix berstatus kesehatan sumber OK jika pernyataannya dapat dibaca, tetapi record trial tetap UNAVAILABLE. Tanpa pola bukti, record UNKNOWN; sumber gagal/terblokir tetap ditampilkan dengan statusnya.
 
 ## Detail tanpa angka yang dapat diverifikasi
 
@@ -76,8 +83,8 @@ Tes menggunakan berkas sementara yang dibersihkan, user sintetis, serta provider
 
 - [ ] `/start` menerima menu pengguna; semua 16 menu pengguna terbuka. Owner mendapat menu ke-17.
 - [ ] Non-owner yang mencoba `/admin`, `/backup`, `/broadcast`, atau callback palsu ditolak.
-- [ ] Tanpa feed: Radar menampilkan NOT CONFIGURED dan tidak membuat promo palsu.
-- [ ] Dengan feed resmi yang diizinkan: scan menyimpan record/sumber/waktu; scan ulang tidak menggandakan URL.
+- [ ] Tanpa feed khusus: sumber bawaan aktif; setelah scan pertama, hasil nyata memiliki URL sumber dan waktu pemeriksaan. Netflix trial UNAVAILABLE. Dengan BUILTIN_PROVIDERS_ENABLED=false dan tanpa feed, tampil NOT CONFIGURED.
+- [ ] Scan sumber bawaan/feed berizin menyimpan record/sumber/waktu; scan ulang tidak menggandakan URL. Jika pola halaman berubah, UNKNOWN; jika sumber gagal, data VERIFIED lama menjadi UNVERIFIED.
 - [ ] Query, filter kategori/benefit/wilayah/tanggal, sorting, detail, favorit, dan perbandingan bekerja dengan data sumber.
 - [ ] Tanpa AI: pencarian asisten tetap berfungsi. Dengan API/model yang valid: mode AI mengekstrak intent; kegagalan API kembali ke keyword.
 - [ ] Settings mengganti zona waktu, preferensi bahasa, kategori, notifikasi, frekuensi dan hari pengingat.

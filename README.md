@@ -2,7 +2,7 @@
 
 Bot Telegram modular untuk riset penawaran resmi, berbasis Node.js 24 LTS, JavaScript ES Modules, Telegraf, Zod, Pino, Vitest, dan satu berkas JSON. Ditujukan untuk satu proses dan beban kecil.
 
-**Database awal sengaja kosong.** Bot tidak mengklaim memindai internet atau mengetahui kredit, pemakaian, maupun tagihan akun cloud. Tanpa feed yang dikonfigurasi, provider menampilkan **NOT CONFIGURED**. Tanpa AI, pencarian kata kunci tetap berjalan atas data lokal.
+**Database awal sengaja kosong.** Saat bot berjalan, scheduler otomatis memeriksa empat sumber publik resmi: AWS Free Tier, Google Cloud Free Program, GitHub Copilot Free, serta status free trial Netflix. Tidak perlu file feed atau API key tambahan. Hasil disimpan ke database dan dapat dicari/difavoritkan. Bot hanya memeriksa URL yang tercantum, tanpa akses pemakaian/tagihan akun. Tanpa AI, pencarian kata kunci tetap berjalan.
 
 ## Mulai secara lokal
 
@@ -38,7 +38,7 @@ src/
   bot.js                   # routing callback, sesi, konfirmasi, otorisasi
   handlers/                # menu, alur input, command pengguna/owner
   services/                # transaksi bisnis, scheduler, backup, proxy, AI
-  providers/               # adapter feed resmi + mock khusus pengujian
+  providers/               # adapter halaman/feed resmi + mock khusus pengujian
   database/                # schema strict v1, inisialisasi, engine JSON
   middleware/              # otorisasi, rate limit, error handler
   utils/                   # HTTP aman, HTML, bahasa, pagination, logging
@@ -59,7 +59,7 @@ docs/                      # panduan operasional Indonesia
 | Area | Implementasi |
 | --- | --- |
 | Navigasi | 17 menu, Home/Back/Cancel, refresh, pagination, edit pesan dengan fallback, konfirmasi sekali pakai 2 menit |
-| Promo Radar | Pencarian lokal, filter kategori/benefit/wilayah/tanggal, relevansi/tanggal, scan feed, isolasi kegagalan sumber, deduplikasi URL |
+| Promo Radar | Pencarian lokal, filter kategori/benefit/wilayah/tanggal, relevansi/tanggal, scan sumber resmi otomatis, isolasi kegagalan sumber, deduplikasi URL |
 | Cloud Tracker | Katalog cloud, nilai terverifikasi atau UNKNOWN, syarat/produk/batas/billing/risiko/sumber, tanpa akses akun |
 | AI Assistant | Pencarian alami melalui adapter opsional; fallback kata kunci/kategori; jawaban faktual berupa detail database dan perbandingan bersumber |
 | Perbandingan | 2–4 promo pilihan, nilai/durasi/syarat/produk/batas/wilayah/biaya/kepastian; tanpa skor atau konversi nilai palsu |
@@ -122,12 +122,13 @@ Semua variabel dasar tersedia pada `.env.example`. Di Render, isi melalui dashbo
 | `BACKUP_ENABLED`, `BACKUP_INTERVAL_HOURS` | Backup default aktif setiap 12 jam |
 | `REFERRAL_ENABLED`, `XP_ENABLED` | Default pengaturan database baru; nilai tersimpan tidak ditimpa saat restart |
 | `AI_PROVIDER`, `AI_API_KEY`, `AI_MODEL` | `none` atau `openai`; model dan key wajib hanya untuk OpenAI |
-| `PROVIDER_CONFIG_PATH` | Konfigurasi feed resmi yang telah memperoleh izin; lihat panduan provider |
+| `BUILTIN_PROVIDERS_ENABLED` | Default true; sumber publik resmi otomatis tanpa API key |
+| `PROVIDER_CONFIG_PATH` | Opsional: feed JSON berizin untuk mengganti sumber bawaan pada kategori terkait |
 | `PROXY_CONFIG_PATH` | File referensi proxy tanpa kredensial; kosong berarti fitur tidak dikonfigurasi |
-| `REQUEST_TIMEOUT_MS` | Default 15 detik untuk AI dan request Telegram non-polling; feed 15 detik; probe proxy 5 detik |
+| `REQUEST_TIMEOUT_MS` | Default 15 detik untuk AI dan request Telegram non-polling; sumber promo 15 detik per request; probe proxy 5 detik |
 | `LOG_LEVEL`, `NODE_ENV` | Level Pino dan mode aplikasi |
 
-Scheduler berjalan tiap detik; pemicu scan/backup/alert dievaluasi setiap menit. Job maksimal 120 detik, dengan abort kooperatif dan lock tetap dipegang sampai handler selesai. Retry memakai `1000 × 2^attempts + jitter(0..999)` ms, atau jeda provider/Retry-After yang lebih panjang (maksimal 24 jam). Cooldown task 30 detik berdasarkan pengguna/jenis maupun kunci global. Feed memiliki batas interval minimum tersendiri.
+Scheduler berjalan tiap detik; pemicu scan/backup/alert dievaluasi setiap menit. Job maksimal 120 detik, dengan abort kooperatif dan lock tetap dipegang sampai handler selesai. Retry memakai `1000 × 2^attempts + jitter(0..999)` ms, atau jeda provider/Retry-After yang lebih panjang (maksimal 24 jam). Cooldown task 30 detik berdasarkan pengguna/jenis maupun kunci global. Sumber bawaan memiliki cooldown minimal 60 menit; robots diperiksa sebelum halaman dan disimpan 24 jam di memori. `lastScanAt` mencatat percobaan scan agar kegagalan tidak memicu job baru setiap menit; hasil sukses tiap sumber memiliki timestamp sendiri. Startup memeriksa sumber baru yang belum mempunyai record.
 
 ## Data, privasi, dan batas kapasitas
 
@@ -144,7 +145,7 @@ Scheduler berjalan tiap detik; pemicu scan/backup/alert dievaluasi setiap menit.
 ## Konfigurasi yang masih diperlukan
 
 1. **Telegram:** token BotFather dan owner ID untuk komunikasi nyata.
-2. **Promo/cloud:** feed JSON yang benar-benar diizinkan dan sumber resmi terverifikasi. Adapter AWS/cloud/software/entertainment tidak berasumsi ada API promo universal. Tidak ada angka kredit seed produksi.
+2. **Promo/cloud:** sumber bawaan aktif otomatis. Feed JSON berizin hanya diperlukan untuk mengganti/menambah cakupan melalui adapter yang ada. Angka hanya diekstrak saat pola bukti resmi cocok; tidak ada angka kredit seed produksi. Nilai maksimum bukan jaminan semua akun mendapatkannya.
 3. **AI:** opsional, API resmi OpenAI Responses dan model kompatibel Structured Outputs. Tidak ada akses API/model yang diasumsikan tersedia.
 4. **Proxy:** opsional, proxy HTTPS dan endpoint JSON tes yang Anda miliki izin untuk akses; tidak dipakai mencari promo atau menghindari pembatasan.
 5. **Persistensi/backup eksternal:** persistent disk Render harus dikonfigurasi; salinan luar disk dilakukan lewat ekspor manual. Tidak ada integrasi object storage otomatis bawaan.
@@ -153,7 +154,7 @@ Scheduler berjalan tiap detik; pemicu scan/backup/alert dievaluasi setiap menit.
 
 `npm test` menjalankan Vitest dengan database sementara dan provider sintetis. Tes mencakup konfigurasi, concurrent writes, kegagalan atomic write ENOSPC/EACCES, recovery korupsi, migration, otorisasi/callback, dedup/filter, alert, retry/lock/timeout, tiket, referral, XP, ekspor/impor, backup/restore, proxy, dan alur Telegraf asli dengan HTTP boundary yang dimock.
 
-Tes fixture bukan promo nyata dan tidak dimasukkan ke database produksi. Tes tidak memverifikasi ketersediaan feed resmi, manfaat akun cloud, respons model berbayar, maupun pengiriman Telegram nyata. Jalankan smoke manual setelah konfigurasi sesuai panduan deployment. Katalog CodeRabbit Emulate v0.0.1 diperiksa; Telegram dan OpenAI Responses tidak tersedia dalam katalog tersebut.
+Tes fixture bukan promo nyata dan tidak dimasukkan ke database produksi. `npm run check:providers` memeriksa sumber resmi langsung, lalu menyimpan dan mencari hasil pada database sementara yang dibersihkan otomatis. Ini tidak membuktikan kelayakan akun, ketersediaan feed khusus, respons AI berbayar, atau pengiriman Telegram nyata. Jalankan smoke manual setelah konfigurasi sesuai panduan deployment. Katalog CodeRabbit Emulate v0.0.1 diperiksa; Telegram dan OpenAI Responses tidak tersedia dalam katalog tersebut.
 
 ## Panduan lanjutan
 
