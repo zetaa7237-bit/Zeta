@@ -13,9 +13,10 @@ Gunakan **satu Background Worker** dengan long polling. Tidak diperlukan port at
 3. Pada Render, buat Blueprint dari repository menggunakan `render.yaml`, atau buat Background Worker manual.
 4. Untuk konfigurasi manual:
    - Runtime Node.js 24 LTS.
-   - Build: `npm ci && npm run check && npm test`.
+   - Build: `npm ci --include=dev && npm run check && npm test`.
    - Start: `npm start`.
    - Instance: **1**.
+   `--include=dev` memastikan Vitest terpasang saat `NODE_ENV=production`. Berkas `.npmrc` juga mengaktifkan instalasi dependency pengujian untuk service lama yang masih memakai `npm ci`.
 5. Isi semua environment dasar dari `.env.example`. Minimal `BOT_TOKEN` dan `OWNER_ID`. Rahasia harus melalui dashboard Render.
 6. Pasang persistent disk bila tersedia untuk tipe service/paket Anda:
    - Mount path: `/var/data/nova`.
