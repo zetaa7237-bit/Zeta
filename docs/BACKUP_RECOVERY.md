@@ -51,3 +51,11 @@ Kesalahan schema/versi tak dikenal juga menghentikan startup, sehingga operator 
 ## Migration
 
 Schema saat ini versi 1. Migration v0 hanya mendukung bentuk v1 yang belum memiliki koleksi/settings baru: default ditambahkan dan seluruh isi divalidasi ulang. Berkas asli disalin menjadi `.migration-<id>` sebelum migration. Versi lainnya ditolak; jangan mengganti angka versi secara manual untuk memaksa data asing diterima.
+
+## Pemulihan lock sekali pakai pada Render
+
+Jika startup menampilkan `DATABASE; DATABASE_LOCKED`, operator dapat memakai `DATABASE_LOCK_RECOVERY_ID` berupa 16 karakter heksadesimal unik di Environment Render, lalu deploy ulang. Ini hanya tersedia untuk worker dengan `PERSISTENT_STORAGE=true`, identitas service/instance Render, dan mount nyata `/var/data/nova`. Render harus tetap satu instance; disk menghentikan instance lama sebelum instance baru berjalan.
+
+Pemulihan menolak lock yang PID-nya masih aktif pada proses lain, format tak dikenal, symlink, atau path di luar mount. PID yang sama dengan proses startup adalah lock lama karena proses tersebut belum membuka database. Lock dipindahkan ke `.lock.recovered-<id>`; database tidak diubah. Marker `.recovery-<id>.done` memastikan satu ID hanya digunakan sekali. Operasi tidak memakai umur file sebagai bukti lock aman dihapus. Hapus nilai environment setelah pemulihan berhasil. Jangan gunakan mekanisme ini pada filesystem bersama lintas proses atau beberapa replica.
+
+[Aturan disk Render](https://render.com/docs/disks) menyatakan disk hanya tersedia untuk satu instance dan menonaktifkan zero-downtime deploy. Jika verifikasi gagal, gunakan prosedur recovery manual; jangan menghapus lock yang belum dipastikan tertinggal.

@@ -1,4 +1,5 @@
 import { setTimeout as delay } from 'node:timers/promises';
+import { recoverDatabaseLock } from '../database/recover-lock.js';
 import { JsonStore } from '../database/json-store.js';
 import { createProviders } from '../providers/index.js';
 import { createLogger } from '../utils/logger.js';
@@ -18,7 +19,9 @@ import { Scheduler } from './scheduler.js';
 import { cleanup } from './maintenance-service.js';
 export async function createServices(config, send) {
   const logger = createLogger(config); let store;
-  try { store = await new JsonStore(config.DATABASE_PATH).init(); } catch (error) { error.startupStage = 'DATABASE'; throw error; }
+  try {
+    if (await recoverDatabaseLock(config.DATABASE_PATH, config.DATABASE_LOCK_RECOVERY_ID, { persistent: config.PERSISTENT_STORAGE })) logger.warn('Lock tertinggal dipulihkan melalui operasi operator sekali pakai.');
+    store = await new JsonStore(config.DATABASE_PATH).init(); } catch (error) { error.startupStage = 'DATABASE'; throw error; }
   let stage = 'DATABASE';
   try {
     const isNew = !store.snapshot().meta.updatedAt;

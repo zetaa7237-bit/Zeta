@@ -7,6 +7,7 @@ const schema = z.object({
   OWNER_ID: z.string().regex(/^[1-9]\d{0,15}$/).refine(value => Number.isSafeInteger(Number(value))),
   NODE_ENV: z.enum(['production', 'development', 'test']).default('production'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'silent']).default('info'),
+  DATABASE_LOCK_RECOVERY_ID: z.union([z.literal(''), z.string().regex(/^[a-f0-9]{16}$/)]).default(''),
   DATABASE_PATH: z.string().min(1).default('./data/database.json'),
   BACKUP_PATH: z.string().min(1).default('./data/backups'),
   PROMO_CHECK_INTERVAL_MINUTES: integer(1, 10080, 60),
